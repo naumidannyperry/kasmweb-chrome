@@ -2,17 +2,14 @@ FROM kasmweb/chrome:1.18.0-rolling-daily
 
 USER root
 
-# Railway Public Networking expects HTTP to the container.
-# KasmVNC startup uses -sslOnly by default; remove it so it can accept HTTP (and HTTPS) on the same port.
-RUN sed -i 's/ -sslOnly//g' /dockerstartup/vnc_startup.sh
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends nginx gettext-base ca-certificates \
+ && rm -rf /var/lib/apt/lists/* \
+ && rm -f /etc/nginx/sites-enabled/default
 
-# Defaults (lebih aman kamu override via Railway Variables)
-ENV VNC_PW=123456
-ENV LAUNCH_URL=https://www.google.com
-# Bantu kalau /dev/shm kecil (sering bikin Chrome crash di container)
-ENV APP_ARGS=--disable-dev-shm-usage
+COPY nginx.conf.template /etc/nginx/templates/kasm.conf.template
+COPY start.sh /start.sh
+RUN chmod +x /start.sh
 
-EXPOSE 6901
-
-# Kasm images typically run as uid 1000
-USER 1000
+# Railway akan route ke $PORT (nginx yang listen), Kasm tetap internal di 6901
+ENTRYPOINT ["/start.sh"]
